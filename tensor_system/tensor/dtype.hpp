@@ -40,7 +40,7 @@ inline bool dtype_is_floating_point(DType dt){  //to check the datatype as the f
 
 class DTypeInfo{  //wrapper for above function to get the data about the datatype
 public:
-    DTypeInfo(DType dt) : dt_(dt) {}  //constructor
+    explicit DTypeInfo(DType dt) : dt_(dt) {}  //constructor
 
     size_t size() const { return dtype_size(dt_); }
     bool is_floating_point() const { return dtype_is_floating_point(dt_); }

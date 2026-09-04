@@ -18,6 +18,12 @@ public:
         numel_=compute_numel();
     }
 
+    // needed because Tensor builds shapes at runtime,
+    // not from a literal list, when permuting dims for transpose/reshape
+    explicit Shape(std::vector<size_t> dims) : dims_(std::move(dims)) {
+        numel_ = compute_numel();
+    }
+
     size_t ndim() const{
         return dims_.size();
     }
