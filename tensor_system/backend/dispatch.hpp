@@ -17,4 +17,7 @@ void dispatch_sqrt(DeviceType device, const float* a, float* out, size_t n);
 void dispatch_exp(DeviceType device, const float* a, float* out, size_t n);
 void dispatch_log(DeviceType device, const float* a, float* out, size_t n);
 
+void dispatch_matmul(DeviceType device, const float* a, const float* b, float* out,
+                      size_t M, size_t K, size_t N);
+                      
 }
