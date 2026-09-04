@@ -106,6 +106,9 @@ public:
         return offset_ + stride_.offset(indices);
     }
     size_t base_offset() const { return offset_; }
+
+    bool is_contiguous() const { return stride_.is_contiguous(shape_); }   //public convenience method
+
 private:
     // Internal constructor: builds a Tensor that SHARES existing storage.
     // Never allocates — this is what view/reshape/transpose actually call.

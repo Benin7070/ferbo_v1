@@ -1,8 +1,8 @@
 #include "elementwise.hpp"
 #include "broadcast.hpp"
+#include "dispatch.hpp"
 #include <cmath>
 #include <stdexcept>
-#include <functional>
 
 namespace ops{
 
@@ -22,8 +22,8 @@ namespace{
         }
     }
 
-    template <typename Fn>
-    Tensor binary_op(const Tensor& a, const Tensor& b, Fn fn, const char* op_name) {
+    Tensor binary_op(const Tensor& a, const Tensor& b, backend::BinaryFn kernel,
+                     const char* op_name) {
         check_fp32(a, op_name);
         check_fp32(b, op_name);
 
@@ -35,58 +35,60 @@ namespace{
         float* out_ptr = static_cast<float*>(out.data());
         const float* a_base = static_cast<const float*>(a.data());
         const float* b_base = static_cast<const float*>(b.data());
+        std::vector<float> a_values(out.numel());
+        std::vector<float> b_values(out.numel());
 
         for (size_t flat = 0; flat < out.numel(); ++flat) {
             auto idx = unravel_index(flat, out_shape);
-            float a_val = a_base[a.base_offset() + a_bstride.offset(idx)];
-            float b_val = b_base[b.base_offset() + b_bstride.offset(idx)];
-            out_ptr[flat] = fn(a_val, b_val);
+            a_values[flat] = a_base[a_bstride.offset(idx)];
+            b_values[flat] = b_base[b_bstride.offset(idx)];
         }
+        kernel(a.device().type(), a_values.data(), b_values.data(), out_ptr, out.numel());
         return out;
     }
 
-    template <typename Fn>
-    Tensor unary_op(const Tensor& a, Fn fn, const char* op_name) {
+    Tensor unary_op(const Tensor& a, backend::UnaryFn kernel, const char* op_name) {
         check_fp32(a, op_name);
 
         Tensor out(a.shape(), a.dtype(), a.device());
         float* out_ptr = static_cast<float*>(out.data());
         const float* a_base = static_cast<const float*>(a.data());
+        std::vector<float> a_values(out.numel());
 
-        size_t n = out.numel();
-        for (size_t flat = 0; flat < n; ++flat) {
+        for (size_t flat = 0; flat < out.numel(); ++flat) {
             auto idx = unravel_index(flat, out.shape());
-            out_ptr[flat] = fn(a_base[a.offset_of(idx)]);
+            a_values[flat] = a_base[a.offset_of(idx)];
         }
+        kernel(a.device().type(), a_values.data(), out_ptr, out.numel());
         return out;
     }
 
 } //anonymous namespace
 
 Tensor add(const Tensor& a, const Tensor& b) {
-    return binary_op(a, b, [](float x, float y) { return x + y; }, "add");
+    return binary_op(a, b, backend::dispatch_add, "add");
 }
 Tensor sub(const Tensor& a, const Tensor& b) {
-    return binary_op(a, b, [](float x, float y) { return x - y; }, "sub");
+    return binary_op(a, b, backend::dispatch_sub, "sub");
 }
 Tensor mul(const Tensor& a, const Tensor& b) {
-    return binary_op(a, b, [](float x, float y) { return x * y; }, "mul");
+    return binary_op(a, b, backend::dispatch_mul, "mul");
 }
 Tensor div(const Tensor& a, const Tensor& b) {
-    return binary_op(a, b, [](float x, float y) { return x / y; }, "div");
+    return binary_op(a, b, backend::dispatch_div, "div");
 }
 
 Tensor neg(const Tensor& a) {
-    return unary_op(a, [](float x) { return -x; }, "neg");
+    return unary_op(a, backend::dispatch_neg, "neg");
 }
 Tensor sqrt(const Tensor& a) {
-    return unary_op(a, [](float x) { return std::sqrt(x); }, "sqrt");
+    return unary_op(a, backend::dispatch_sqrt, "sqrt");
 }
 Tensor exp(const Tensor& a) {
-    return unary_op(a, [](float x) { return std::exp(x); }, "exp");
+    return unary_op(a, backend::dispatch_exp, "exp");
 }
 Tensor log(const Tensor& a) {
-    return unary_op(a, [](float x) { return std::log(x); }, "log");
+    return unary_op(a, backend::dispatch_log, "log");
 }
 
 } //ops namespace
