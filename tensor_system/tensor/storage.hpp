@@ -1,9 +1,8 @@
 #pragma once
 #include <cstddef>
+#include <stdexcept>
+#include <device.hpp>
 
-enum class Device{  //declaring the type of devices using for cimputation
-    CPU
-};
 
 class Storage{
 public:

@@ -13,22 +13,29 @@ Storage::~Storage(){
 
 
 void Storage::allocate(){
-    switch (device_){
-        case Device::CPU:
+    switch (device_.type()){
+        case DeviceType::CPU:
             data_=std::malloc(size_);
             if (size_>0 && data_ == nullptr){
                 throw std::bad_alloc();   //allocation failed so throwing and bad allocation error
             }
             break;
+        case DeviceType::CUDA:
+        case DeviceType::NPU:
+            throw std::runtime_error("Device not yet supported");  // honest failure, not silent no-op
+            break;
     }
 }
 
 void Storage::release(){
-    switch (device_)
+    switch (device_.type())
     {
-    case Device::CPU:
+    case DeviceType::CPU:
         std::free(data_);
         break;
+    case DeviceType::CUDA:
+    case DeviceType::NPU:
+        break;   // nothing was ever allocated on these, so nothing to free
     }
     data_=nullptr;   //to remove the dangling pointer
 }
