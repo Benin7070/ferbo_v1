@@ -101,6 +101,10 @@ public:
     Tensor view(const std::vector<size_t>& new_dims) const {
         return reshape(new_dims);   // same no-copy contract; kept as a separate name deliberately
     }
+
+    size_t offset_of(const std::vector<size_t>& indices) const {
+        return offset_ + stride_.offset(indices);
+    }
 private:
     // Internal constructor: builds a Tensor that SHARES existing storage.
     // Never allocates — this is what view/reshape/transpose actually call.
