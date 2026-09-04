@@ -30,7 +30,7 @@ public:
     }
 
     size_t numel() const{
-        return numel_;
+        return numel_;  // cached at construction — safe because Shape is immutable
     }
 
 private:
