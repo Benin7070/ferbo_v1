@@ -1,4 +1,5 @@
 #include "elementwise.hpp"
+#include "broadcast.hpp"
 #include <cmath>
 #include <stdexcept>
 #include <functional>
@@ -15,17 +16,6 @@ namespace{
         return indices;
     }
 
-    void check_same_shape(const Tensor& a, const Tensor& b, const char* op_name) {
-        if (a.ndim() != b.ndim()) {
-            throw std::invalid_argument(std::string(op_name) + ": dimension count mismatch");
-        }
-        for (size_t i = 0; i < a.ndim(); ++i) {
-            if (a.shape()[i] != b.shape()[i]) {
-                throw std::invalid_argument(std::string(op_name) + ": shape mismatch");
-            }
-        }
-    }
-
     void check_fp32(const Tensor& t, const char* op_name) {
         if (t.dtype().value() != DType::FP32) {
             throw std::runtime_error(std::string(op_name) + ": only FP32 supported for now");
@@ -34,25 +24,27 @@ namespace{
 
     template <typename Fn>
     Tensor binary_op(const Tensor& a, const Tensor& b, Fn fn, const char* op_name) {
-        check_same_shape(a, b, op_name);
         check_fp32(a, op_name);
         check_fp32(b, op_name);
 
-        Tensor out(a.shape(), a.dtype(), a.device());   // fresh, contiguous — never shares storage
+        Shape out_shape = ops::broadcast_shapes(a.shape(), b.shape());
+        Stride a_bstride = ops::broadcast_strides(a.shape(), a.stride(), out_shape);
+        Stride b_bstride = ops::broadcast_strides(b.shape(), b.stride(), out_shape);
+
+        Tensor out(out_shape, a.dtype(), a.device());
         float* out_ptr = static_cast<float*>(out.data());
         const float* a_base = static_cast<const float*>(a.data());
         const float* b_base = static_cast<const float*>(b.data());
 
-        size_t n = out.numel();
-        for (size_t flat = 0; flat < n; ++flat) {
-            auto idx = unravel_index(flat, out.shape());
-            float a_val = a_base[a.offset_of(idx)];
-            float b_val = b_base[b.offset_of(idx)];
-            out_ptr[flat] = fn(a_val, b_val);   // writing flat is safe: out is guaranteed contiguous
+        for (size_t flat = 0; flat < out.numel(); ++flat) {
+            auto idx = unravel_index(flat, out_shape);
+            float a_val = a_base[a.base_offset() + a_bstride.offset(idx)];
+            float b_val = b_base[b.base_offset() + b_bstride.offset(idx)];
+            out_ptr[flat] = fn(a_val, b_val);
         }
-        return out; 
-
+        return out;
     }
+
     template <typename Fn>
     Tensor unary_op(const Tensor& a, Fn fn, const char* op_name) {
         check_fp32(a, op_name);

@@ -105,6 +105,7 @@ public:
     size_t offset_of(const std::vector<size_t>& indices) const {
         return offset_ + stride_.offset(indices);
     }
+    size_t base_offset() const { return offset_; }
 private:
     // Internal constructor: builds a Tensor that SHARES existing storage.
     // Never allocates — this is what view/reshape/transpose actually call.
